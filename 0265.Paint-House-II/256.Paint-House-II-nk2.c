@@ -21,76 +21,41 @@ int minCostII(int** costs, int costsSize, int* costsColSize){
     int dp[h][k];
     memset( dp, 0x00, sizeof( dp ) );
     
-    int min  = INT_MAX;
-    int min2 = INT_MAX;
-    int mc   = -1;
-    int mc2  = -1;
-    
+    int min = INT_MAX;
     int i;
     int j;
-    
+    int m;
     for( j = 0; j < k; j++ )
     {
         dp[0][j] = costs[0][j];
         
-        if( dp[0][j] < min )
-        {
-            min2 = min;
-            mc2  = mc;
-            
-            min = dp[0][j];
-            mc  = j;
-            
-        }
-        else if( dp[0][j] < min2 )
-        {
-            min2 = dp[0][j];
-            mc2  = j;
-        }
-        
     }
-    
-    int prev_mc  = mc;
-    int prev_mc2 = mc2;
     
     for( i = 1; i < h; i++ )
     {
-        min  = INT_MAX;
-        min2 = INT_MAX;
         
         for( j = 0; j < k; j++ )
         {
-            if( j == prev_mc )
+            min = INT_MAX;
+            for( m = 0; m < k; m++ )
             {
-                dp[i][j] = dp[i-1][prev_mc2] + costs[i][j];
-            }
-            else
-            {
-                dp[i][j] = dp[i-1][prev_mc] + costs[i][j];
+                if( m == j ) continue;
+                min = my_min( dp[i-1][m], min );
             }
             
-            
-            if( dp[i][j] < min )
-            {
-                min2 = min;
-                mc2  = mc;
-
-                min = dp[i][j];
-                mc  = j;
-
-            }
-            else if( dp[i][j] < min2 )
-            {
-                min2 = dp[i][j];
-                mc2  = j;
-            }
-            
+            dp[i][j] = min + costs[i][j];
         }
-        
-        prev_mc = mc;
-        prev_mc2 = mc2;
         
     }
     
-    return dp[h-1][prev_mc];
+    min = INT_MAX;
+    for( j = 0; j < k; j++ )
+    {
+        min = my_min( dp[h-1][j], min );
+    }
+    
+    
+    
+    
+    return min;
 }
