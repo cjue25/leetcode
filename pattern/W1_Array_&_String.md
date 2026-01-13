@@ -107,3 +107,60 @@ void slidingWindow(int* nums, int numsSize) {
 }
 
 ```
+
+###  Hash
+
+```c
+#define MAX_HASH_SIZE (1<<12)
+
+
+typedef struct _node {
+    int value;
+    int index;
+    int found;
+    struct _node *next;
+} NODE;
+
+NODE * node_pool = NULL;
+NODE ** hash_map = NULL;
+
+unsigned int hash_cal(int value) {
+    return (value & (MAX_HASH_SIZE - 1));
+}
+
+void node_pool_alloc(int size) {
+    node_pool = malloc(sizeof(NODE) * size);
+    memset(node_pool, 0x00, sizeof(NODE) * size);
+}
+void hash_alloc(int size) {
+    hash_map = malloc(sizeof(NODE*) * size);
+    memset(hash_map, 0x00, sizeof(NODE*) * size);
+}
+
+NODE * hash_search(int value) {
+    unsigned int hash_idx = hash_cal(value);
+    NODE *node = hash_map[hash_idx];
+    while (node != NULL) {
+        if (node->value == value) {
+            return node;
+        }
+        node = node->next;
+    }
+    return NULL;
+}
+void hash_add(NODE *node) {
+    unsigned int hash_idx = hash_cal(node->value);
+    node->next = hash_map[hash_idx];
+    hash_map[hash_idx] = node;
+}
+
+void hash_reset(int size) {
+    memset(hash_map, 0x00, sizeof(NODE*) * size);
+}
+
+void free_all(void) {
+    free(hash_map);
+    free(node_pool);
+}
+
+```

@@ -27,6 +27,113 @@
 * **具有「公平性」或「層次性」的問題：** 如 BFS（廣度優先搜尋）。
 * **緩衝處理：** 任務調度、印表機任務、網路封包緩衝。
 
+### C. Heap
+
+Complete Binary Tree：每一層的節點數都是上一層的 2 倍
+- 第 1 層：$1$ 個節點 (根) $2^0$
+- 第 2 層：$2$ 個節點      $2^1$
+- 第 3 層：$4$ 個節點      $2^2$
+- 第 4 層：$8$ 個節點      $2^3$
+- 第 d 層：$2^(d-1)$ 個
+
+第 1 層到第 $d-1$ 層的總節點數 $S$
+
+$$
+S = 2^0 + 2^1 + 2^2 + \dots + 2^{d-2}
+$$
+
+(首項 $a_1 = 1$，公比 $r = 2$，項數 $n = d-1$ 的等比數列。)
+
+$$
+S_n = \frac{a_1(r^n - 1)}{r - 1}\\
+= \frac{1 \times (2^{d-1} - 1)}{2 - 1} = \frac{2^{d-1} - 1}{1} = 2^{d-1} - 1
+$$
+
+所以第d層的第一個編號就是(0-based)
+
+$$
+2^{d-1} - 1
+$$
+
+假設現在在 d 層，第 k 個節點，index = i
+
+$$
+i = (2^{d-1} - 1) + (k - 1) \quad (1)
+$$
+
+
+再找節點 $i$ 的左子節點。這個子節點一定位在第 $d+1$ 層。
+
+在第 $d$ 層中，節點 $i$ 之前有 $k-1$ 個節點。
+
+這 $k-1$ 個節點每個都有 2 個小孩，所以它們一共佔據了第 $d+1$ 層前面的 $2(k-1)$ 個位置。
+因此，節點 $i$ 的左子節點，就是第 $d+1$ 層的第 $2(k-1)$ 個節點。
+
+所以總共節點數字為
+
+$$
+L_i = (2^d - 1) + (2k - 2)\\
+L_i = 2^d + 2k - 3 \quad (2)
+$$
+
+
+$$
+k = i - (2^{d-1} - 1) + 1 = i - 2^{d-1} + 2
+$$
+
+$$
+L_i = 2^d + 2i - 2^d + 4 - 3  \\
+L_i = 2^d + 1
+$$
+
+右邊就是
+
+$$
+L_R = 2^d + 2
+$$
+
+
+#### 左右子點的公式
+
+- 若從索引 0 開始存，左子點是 `2i + 1` (i<<1) + 1，右子點是 `2i + 2` (i<<1)+2。
+
+
+#### 例子
+
+[1, 2, 6, 3, 8, 7]
+      1 (idx:0)
+    /   \
+   2     6   (idx:1, 2)
+  / \   /
+ 3   8 7     (idx:3, 4, 5)
+
+
+#### 找到沒有小孩的節點
+
+從 (size - 2) / 2 開始
+
+在 0-based 索引中，最後一個元素的索引是 size - 1。
+根據父節點公式 (i - 1) / 2，最後一個元素的父親就是 ((size - 1) - 1) / 2 = (size - 2) / 2。
+這代表 build_heap 的時候可以選這個，跳過了所有沒有小孩的「葉子節點」
+
+
+#### 最底層游到根部是 $O(\log n)$ 
+
+層數與總節點數的公式：假設樹的高度為 $H$。
+
+第 1 層有 $2^0 = 1$ 個節點。
+第 2 層有 $2^1 = 2$ 個節點。
+第 $H$ 層（最底層）有 $2^{H-1}$ 個節點。
+
+總節點數 $n$ 為：$n = 2^0 + 2^1 + \dots + 2^{H-1} = 2^H - 1$。
+
+反推高度：由 $n = 2^H - 1$ 可以得知 $2^H = n + 1$。
+
+左右取 $\log$，得到 $H = \log_2(n + 1)$。
+
+步數計算：最底層的節點要游到根部，最多就是經過這棵樹的高度 $H-1$ 步。既然 $H$ 與 $\log n$ 成正比，那麼這段路徑長度就是 $O(\log n)$。
+
+
 ---
 
 ## 2. C 語言實作時最常見的 Bug
@@ -55,6 +162,57 @@
 
 ## 3. C 語言萬用模板
 
+### Stack
+```c
+typedef struct _STACK {
+    int capacity;
+    char * data;
+    int top;
+} STACK;
+
+STACK * create_stack(int size) {
+    STACK * s = malloc(sizeof(STACK));
+    s->capacity = size;
+    s->data = malloc(sizeof(char)*size);
+    s->top = -1;
+    return s;
+}
+
+bool is_empty(STACK * s) {
+    return (s->top == -1);
+}
+
+bool is_full(STACK * s) {
+    return (s->capacity == (s->top - 1));
+}
+
+void stack_push(STACK * s, char c) {
+    if (!is_full(s)) {
+        s->data[++(s->top)] = c;
+    }
+}
+
+char stack_pop(STACK *s) {
+    if (!is_empty(s)) {
+        char c = s->data[(s->top)--];
+        return c;
+    }
+    return -1;
+}
+
+char stack_peak(STACK *s) {
+    if (!is_empty(s)) {
+        return s->data[s->top];
+    }
+    return -1;
+}
+
+void stack_free(STACK * s) {
+    free(s->data);
+    free(s);
+}
+```
+
 ### 單調堆疊模板 (Monotonic Stack)
 
 常用於解決「找尋下一個更大/更小元素」的問題。
@@ -79,6 +237,31 @@ void monotonicStack(int* nums, int numsSize) {
     while (top >= 0) nextGreater[stack[top--]] = -1;
 }
 
+//739
+int* dailyTemperatures(int* temperatures, int temperaturesSize, int* returnSize) {
+    *returnSize = temperaturesSize;
+
+    int * ans = calloc(sizeof(int), temperaturesSize);
+
+    int stack[temperaturesSize];
+    int top = -1;
+
+    for (int i = 0; i < temperaturesSize; i++) {
+        int temp = temperatures[i];
+        while (top >= 0 && (temp > temperatures[stack[top]])) {
+            ans[stack[top]] = i - stack[top];
+            top--;
+        }
+        top++;
+        stack[top] = i;
+    }
+
+    while (top >= 0) {
+        ans[stack[top].index] = 0;
+        top--;
+    }
+    return ans;
+}
 ```
 
 ### 最小堆疊模板 (Min-Heap)
@@ -127,4 +310,86 @@ int pop(MinHeap* h) {
     return min;
 }
 
+```
+
+### Max-Heap
+
+```c
+typedef struct _HEAP {
+    int capacity;
+    int * data;
+} HEAP;
+
+HEAP * heap_alloc(int size) {
+    HEAP * h = malloc(sizeof(HEAP));
+    h->capacity = size;
+    h->data = malloc(sizeof(int) * size);
+    return h;
+}
+
+bool need_swap(int root, int next) {
+    if (root < next) {
+        return 1;
+    }
+    return 0;
+}
+
+void swap(int * a, int * b) {
+    int c = *a;
+    *a = *b;
+    *b = c;
+}
+
+void heapify(HEAP * h, int i) {
+    int index = i;
+    while (1) {
+        int left = (index<<1) + 1;
+        int right = (index<<1) + 2;
+        int max_idx = index;
+        if (left < h->capacity && need_swap(h->data[max_idx], h->data[left])) {
+            max_idx = left;
+        }
+
+        if (right < h->capacity && need_swap(h->data[max_idx], h->data[right]))  {
+            max_idx = right;
+        }
+
+        if (max_idx != index) {
+            swap(&h->data[max_idx], &h->data[index]);
+            index = max_idx;
+        } else {
+            break;
+        }
+    }
+
+}
+
+void heap_free(HEAP * h) {
+    free(h->data);
+    free(h);
+}
+
+void build_heapify(HEAP * h) {
+    int size = (h->capacity - 2)/ 2;
+    for (int i = size; i >=0; i--) {
+        heapify(h, i);
+    }
+}
+
+```
+### Linked List
+
+```c
+struct ListNode* reverseList(struct ListNode* head) {
+    struct ListNode * curr = head;
+    struct ListNode * prev = NULL;
+    while (curr != NULL) {
+        struct ListNode * next = curr->next;
+        curr->next = prev;
+        prev = curr;
+        curr = next;
+    }
+
+    return prev;
+}
 ```
