@@ -4,6 +4,7 @@
 * DFS / BFS (深度與廣度搜尋)
 * Cycle Detection (環狀偵測)
 * Dijkstra / MST (最短路徑與生成樹基礎)
+* Union Found
 
 ---
 
@@ -140,6 +141,32 @@ void BFS(struct Graph* graph, int startVertex) {
             curr = curr->next;
         }
     }
+}
+
+```
+
+
+### D. Union Found
+
+```c
+#include <stdlib.h>
+int find(int* parent, int i) {
+    //找我自己的老大，如果我是直接回傳，不是的話去問我老大的老大是誰
+    return parent[i] == i ? i : (parent[i] = find(parent, parent[i]));
+}
+
+bool validPath(int n, int** edges, int edgesSize, int* edgesColSize, int source, int destination) {
+    int parent[n];
+    for (int i = 0; i < n; i++) parent[i] = i;
+
+    for (int i = 0; i < edgesSize; i++) {
+        int rootU = find(parent, edges[i][0]);
+        int rootV = find(parent, edges[i][1]);
+        //每個都去問最高層是誰，問到之後，每個人都直接對到他
+        if (rootU != rootV) parent[rootU] = rootV;
+    }
+
+    return find(parent, source) == find(parent, destination);
 }
 
 ```
