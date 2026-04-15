@@ -355,3 +355,170 @@ Dijkstra 的核心思想是「貪婪法 (Greedy)」，它永遠相信：目前�
 
 也就是說，整個網路要完全收到訊號，必須等最慢的那個人，也就是取這個陣列裡的**最大值**。
 答案就是 **6**！
+
+### DFS 排列組合
+
+- 組合 (Combination) / 子集 (Subset)：與「順序無關」 ({1, 2} 和 {2, 1} 視為同一種)。我們需要使用 startIndex 來控制，確保每次往下層搜尋時，只能挑選「當前數字之後」的數字，避免產生倒退選取造成的重複。
+- 排列 (Permutation)：與「順序有關」 ({1, 2} 和 {2, 1} 是不同的)。我們不需要 startIndex，每次都從頭 (index 0) 開始找，但需要一個 used (或 visited) 布林陣列，來記錄「這個數字在當前這條路徑中是不是已經被用過了」
+
+以下整理四大情境與 DFS 範本：
+
+---
+
+### 情境一：子集 (Subsets)
+**特徵**：收集樹狀結構中**所有的節點**（每個狀態都是答案）。
+
+#### 1. 元素不重複 (LeetCode 78 - Subsets)
+* **邏輯**：因為元素不重複，直接用 `startIndex` 往後找即可。
+* **DFS 範本**：
+```c
+void dfs(int* nums, int numsSize, int startIndex, int* path, int pathLen) {
+    // 1. 收集答案：不需要 return 條件，因為每個走過的節點都是一個合法的子集
+    add_to_result(path, pathLen); 
+
+    // 2. 展開選擇
+    for (int i = startIndex; i < numsSize; i++) {
+        path[pathLen] = nums[i]; // 做選擇
+        // 進入下一層，startIndex 變成 i + 1 (不能選自己了)
+        dfs(nums, numsSize, i + 1, path, pathLen + 1); 
+        // 撤銷選擇：在 C 語言中，其實不需要特別做什麼，因為下次迴圈 pathLen 會直接覆蓋當前位置
+    }
+}
+```
+
+#### 2. 元素有重複 (LeetCode 90 - Subsets II)
+* **邏輯**：為了避免選出重複的子集（例如兩個相同的 `2` 產生兩組 `{1, 2}`），**必須先排序**。接著在同一層迴圈中，遇到跟前一個一樣的數字就跳過（剪枝）。
+* **DFS 範本**：
+```c
+// 主程式必須先呼叫 qsort(nums, numsSize, sizeof(int), cmp);
+void dfs(int* nums, int numsSize, int startIndex, int* path, int pathLen) {
+    add_to_result(path, pathLen);
+
+    for (int i = startIndex; i < numsSize; i++) {
+        // 剪枝：如果不是這層的第一個元素，且跟前一個元素相同，就跳過
+        if (i > startIndex && nums[i] == nums[i - 1]) {
+            continue;
+        }
+        
+        path[pathLen] = nums[i];
+        dfs(nums, numsSize, i + 1, path, pathLen + 1);
+    }
+}
+```
+
+---
+
+### 情境二：組合 (Combinations)
+**特徵**：收集樹狀結構中**葉子節點**的結果（通常有條件限制，如長度、總和）。
+
+#### 1. 限制長度，不重複選 (LeetCode 77 - Combinations)
+* **邏輯**：給定 `n` 個數字，選 `k` 個。使用 `startIndex`。
+* **DFS 範本**：
+```c
+void dfs(int n, int k, int startIndex, int* path, int pathLen) {
+    // 終止條件：路徑長度達到 k
+    if (pathLen == k) {
+        add_to_result(path, pathLen);
+        return;
+    }
+
+    // 這裡可以做一個優化剪枝：如果剩下的元素不夠湊滿 k 個，就不用跑了
+    // 條件： i <= n - (k - pathLen) + 1
+    for (int i = startIndex; i <= n; i++) {
+        path[pathLen] = i;
+        dfs(n, k, i + 1, path, pathLen + 1);
+    }
+}
+```
+
+#### 2. 元素可無限重複選取 (LeetCode 39 - Combination Sum)
+* **邏輯**：可以重複選自己！所以進入下一層時，傳入的不是 `i + 1`，而是 `i`。
+* **DFS 範本**：
+```c
+void dfs(int* candidates, int candidatesSize, int target, int startIndex, int currentSum, int* path, int pathLen) {
+    if (currentSum == target) {
+        add_to_result(path, pathLen);
+        return;
+    }
+    if (currentSum > target) { // 爆了，剪枝
+        return; 
+    }
+
+    for (int i = startIndex; i < candidatesSize; i++) {
+        path[pathLen] = candidates[i];
+        // 關鍵：因為可以重複選當前數字，所以下一層 startIndex 還是 i
+        dfs(candidates, candidatesSize, target, i, currentSum + candidates[i], path, pathLen + 1);
+    }
+}
+```
+
+---
+
+### 情境三：排列 (Permutations / Sequences)
+**特徵**：順序不同視為不同結果。**不用 `startIndex`，改用 `used` 陣列。**
+
+#### 1. 元素不重複 (LeetCode 46 - Permutations)
+* **邏輯**：每次迴圈都從 `0` 開始找，如果這個數字在當前路線用過了就跳過。
+* **DFS 範本**：
+```c
+// bool* used 需要在主程式初始化為 false
+void dfs(int* nums, int numsSize, bool* used, int* path, int pathLen) {
+    if (pathLen == numsSize) { // 蒐集滿了
+        add_to_result(path, pathLen);
+        return;
+    }
+
+    for (int i = 0; i < numsSize; i++) { // 排列問題，永遠從 0 開始
+        if (used[i]) continue; // 已經在路徑中，跳過
+
+        used[i] = true; // 標記為使用過
+        path[pathLen] = nums[i];
+        
+        dfs(nums, numsSize, used, path, pathLen + 1);
+        
+        used[i] = false; // 撤銷標記 (非常重要！)
+    }
+}
+```
+
+#### 2. 元素有重複 (LeetCode 47 - Permutations II)
+* **邏輯**：最難的一種。一樣**必須先排序**。不僅要檢查是否 `used[i]`，還要進行同層去重。
+* **DFS 範本**：
+```c
+// 主程式必須先呼叫 qsort
+void dfs(int* nums, int numsSize, bool* used, int* path, int pathLen) {
+    if (pathLen == numsSize) {
+        add_to_result(path, pathLen);
+        return;
+    }
+
+    for (int i = 0; i < numsSize; i++) {
+        if (used[i]) continue;
+
+        // 終極剪枝邏輯：如果跟前一個數字一樣，而且前一個數字「還沒被用過」
+        // 代表前一個數字剛在「同一層」被拿來用過並且撤銷了，所以這輪如果再用會產生重複排列
+        if (i > 0 && nums[i] == nums[i - 1] && !used[i - 1]) {
+            continue;
+        }
+
+        used[i] = true;
+        path[pathLen] = nums[i];
+        
+        dfs(nums, numsSize, used, path, pathLen + 1);
+        
+        used[i] = false; 
+    }
+}
+```
+
+---
+
+### 總結速查表
+
+| 問題類型 | 是否需要排序 | 迴圈起點 | 去重 / 防呆機制 | 下一層的遞迴參數 |
+| :--- | :--- | :--- | :--- | :--- |
+| **組合/子集** (無重複元素) | 否 | `startIndex` | 靠 `startIndex` 避免往前選 | `dfs(..., i + 1, ...)` |
+| **組合/子集** (有重複元素) | **是** | `startIndex` | `if (i > startIndex && nums[i] == nums[i-1]) continue;` | `dfs(..., i + 1, ...)` |
+| **組合** (元素可無限重用)| 否 | `startIndex` | 靠 `startIndex` 避免往前選 | `dfs(..., i, ...)` **(關鍵)** |
+| **排列** (無重複元素) | 否 | `0` | `if (used[i]) continue;` | `dfs(..., used, ...)` |
+| **排列** (有重複元素) | **是** | `0` | `if (used[i] \|\| (i > 0 && nums[i] == nums[i-1] && !used[i-1])) continue;` | `dfs(..., used, ...)` |
