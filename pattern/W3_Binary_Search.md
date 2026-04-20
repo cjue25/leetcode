@@ -53,100 +53,145 @@
 
 ## 3. C 語言萬用模板
 
-為了避免邏輯混亂，建議在 C 語言中統一使用 **「左閉右閉 [left, right]」** 的思維，這是最直覺且不容易出錯的寫法。
+**建議將「左閉右開 `[left, right)`」作為未來的統一寫法。**
 
-### A. 基礎範本：尋找精確值
+雖然「左閉右閉 `[left, right]`」在剛開始學的時候最符合人類直覺，但如果你未來想在 C/C++ 的生態系中走得更遠，**左閉右開** 會為你省下非常多麻煩。
 
+以下比較兩者的差異、各自的模板。
+
+---
+
+### 1. 左閉右閉 `[left, right]` (最直覺)
+
+這個寫法的意思是：我們要在包含 `left` 且包含 `right` 的實體區間內尋找目標。
+
+* **初始狀態：** `left = 0`, `right = n - 1` (兩個指標都指向陣列內實際存在的元素)。
+* **迴圈條件：** `while (left <= right)` (因為 `left == right` 時，區間內還有 1 個元素需要檢查，是有意義的)。
+* **區間縮小：** 既然 `mid` 已經檢查過了不是我們要的，下一次搜尋就不需要包含 `mid`。
+    * 目標在左半邊：`right = mid - 1`
+    * 目標在右半邊：`left = mid + 1`
+
+**C 語言模板：**
 ```c
-int binarySearch(int* nums, int numsSize, int target) {
+int binary_search_closed(int arr[], int n, int target) {
     int left = 0;
-    int right = numsSize - 1; // [left, right]
+    int right = n - 1; // 重點 1：指向最後一個元素
 
-    while (left <= right) { // 當 left > right 時終止
-        int mid = left + (right - left) / 2;
-        if (nums[mid] == target) {
-            return mid;
-        } else if (nums[mid] < target) {
-            left = mid + 1; // 排除左半邊
+    while (left <= right) { // 重點 2：有等號
+        int mid = left + (right - left) / 2; // 防止整數溢位
+        
+        if (arr[mid] == target) {
+            return mid; // 找到了
+        } else if (arr[mid] < target) {
+            left = mid + 1;
         } else {
-            right = mid - 1; // 排除右半邊
+            right = mid - 1; // 重點 3：mid 已經檢查過，右邊界退一步
         }
     }
     return -1; // 找不到
 }
-
 ```
+* **優點：** 邏輯非常直接，我們就是在找一個確切的範圍。
+* **缺點：** 計算區間長度時要加一（`長度 = right - left + 1`），有時容易算錯。
+
+---
+
+### 2. 左閉右開 `[left, right)` (強烈推薦)
+
+這個寫法的意思是：區間包含 `left`，但**不包含** `right`。`right` 永遠指向我們搜尋範圍「最後一個元素的下一個位置」（一個無效的邊界）。
+
+* **初始狀態：** `left = 0`, `right = n` (`right` 指向陣列外)。
+* **迴圈條件：** `while (left < right)` (因為當 `left == right` 時，區間 `[left, left)` 裡面沒有任何元素，迴圈應該終止)。
+* **區間縮小：**
+    * 目標在左半邊：因為右邊界本來就是「不包含」的開區間，所以直接將右邊界設為剛才檢查過的 `mid` 即可。`right = mid`。
+    * 目標在右半邊：左邊界是閉區間，`mid` 檢查過了不要包含，所以 `left = mid + 1`。
+
+**C 語言模板：**
+```c
+int binary_search_half_open(int arr[], int n, int target) {
+    int left = 0;
+    int right = n; // 重點 1：指向陣列長度 (越界位置)
+
+    while (left < right) { // 重點 2：沒有等號
+        int mid = left + (right - left) / 2;
+        
+        if (arr[mid] == target) {
+            return mid;
+        } else if (arr[mid] < target) {
+            left = mid + 1;
+        } else {
+            right = mid; // 重點 3：直接等於 mid，不減 1
+        }
+    }
+    return -1;
+}
+```
+
+---
+
+### 為什麼推薦「左閉右開」作為統一寫法？
+
+1.  **完美契合 C/C++ 的底層基因：** C 語言的陣列索引是從 `0` 到 `n-1`。當你傳遞一個陣列大小 `n` 時，`[0, n)` 這個左閉右開區間剛好完美涵蓋整個陣列，不需要你手動去寫 `n - 1`。未來的 C++ 標準模板庫 (STL) 中的迭代器（如 `.begin()` 和 `.end()`）也全都是採用左閉右開的設計。
+2.  **區間長度計算超簡單：** 在 `[left, right)` 區間中，元素的個數永遠是 `right - left`。不用像左閉右閉那樣去糾結要不要 `+1`。
+3.  **無縫分割區間：** 如果你要把一個區間從 `mid` 切成兩半，左閉右開可以優雅地切成 `[left, mid)` 和 `[mid, right)`，兩者的交集為空，聯集為原區間。如果是左閉右閉，你得寫成 `[left, mid]` 和 `[mid+1, right]`，看起來較為破碎。
+4.  **找 Lower Bound / Upper Bound 更方便：** 單純找一個值很簡單，但實務上常常需要找「第一個大於等於 target 的位置」或「第一個大於 target 的位置」。使用左閉右開的模板，在處理這類進階二分法時，邏輯會高度統一，不容易出錯。
+
 
 ### B. 進階範本：尋找左邊界 (Lower Bound)
 
-常用於 `nums` 中有重複數字，要找「第一個」出現的位置，或第一個  target 的位置。
+在一個排序好的陣列中，找到『第一個大於或等於 (>=) target』的元素位置
+
+- 如果陣列裡有 target，它會找到第一個出現的 target。
+- 如果陣列裡沒有 target，它會找到第一個比它大的數字。
+- 如果 target 比陣列裡所有數字都大，它會回傳陣列長度 n（越界位置）。
 
 ```c
-int findFirst(int* nums, int numsSize, int target) {
+int lower_bound(int arr[], int n, int target) {
     int left = 0;
-    int right = numsSize - 1;
-    int ans = -1;
+    int right = n; // [left, right)
 
-    while (left <= right) {
+    while (left < right) {
         int mid = left + (right - left) / 2;
-        if (nums[mid] >= target) {
-            ans = mid;      // 暫存可能是答案的位置
-            right = mid - 1; // 繼續往左邊找，看有沒有更小的索引
+        
+        if (arr[mid] < target) {
+            // mid 本身小於 target，所以「大於等於 target」的第一個元素一定在右邊
+            left = mid + 1; 
         } else {
-            left = mid + 1;
+            // arr[mid] >= target
+            // 關鍵：mid 可能是答案，或者答案在 mid 更左邊。
+            // 我們把 right 設為 mid，代表「mid 以後（含 mid）我都找過了，它們都 >= target」。
+            // 接下來只要專心找 [left, mid) 這個區間就好。
+            right = mid; 
         }
     }
-    return ans;
+    
+    // 當 left == right 時迴圈結束。
+    // left (或 right) 就是「第一個 >= target」的索引位置。
+    return left; 
 }
 
 ```
 
-### C. 搜尋答案模板 (Binary Search on Answer)
-
-用於優化問題，假設我們要找滿足 `check()` 條件的「最小整數值」。
+Upper Bound 的定義是：「找到『第一個嚴格大於 (>) target』的元素位置。」
 
 ```c
-bool check(int val, int* data, int size) {
-    // 根據題目判斷 val 是否可行
-    // 返回 true 或 false
-}
+int upper_bound(int arr[], int n, int target) {
+    int left = 0;
+    int right = n;
 
-int solve(int* data, int size, int min_range, int max_range) {
-    int left = min_range;
-    int right = max_range;
-    int ans = max_range;
-
-    while (left <= right) {
+    while (left < right) {
         int mid = left + (right - left) / 2;
-        if (check(mid, data, size)) {
-            ans = mid;      // 此值可行，嘗試找找看有沒有更小的
-            right = mid - 1;
+        
+        if (arr[mid] <= target) { // 唯一的差別：這裡變成 <=
+            // mid 本身小於或等於 target，所以「嚴格大於」的元素一定在右邊
+            left = mid + 1; 
         } else {
-            left = mid + 1; // 此值不可行，必須增加數值
+            // arr[mid] > target
+            right = mid; 
         }
     }
-    return ans;
+    return left;
 }
-
-```
-
-### D. 標準庫 `bsearch` 範例
-
-C 語言 `<stdlib.h>` 內建了 `bsearch`，但僅限於精確值搜尋。
-
-```c
-#include <stdlib.h>
-
-int compare(const void* a, const void* b) {
-    return (*(int*)a - *(int*)b);
-}
-
-// 使用方式
-int* item = bsearch(&target, nums, numsSize, sizeof(int), compare);
-if (item != NULL) {
-    int index = item - nums; // 透過指針位移計算索引
-}
-
 ```
 
 ### 時間複雜度補充

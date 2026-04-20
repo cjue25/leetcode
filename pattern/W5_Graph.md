@@ -356,6 +356,8 @@ Dijkstra 的核心思想是「貪婪法 (Greedy)」，它永遠相信：目前�
 也就是說，整個網路要完全收到訊號，必須等最慢的那個人，也就是取這個陣列裡的**最大值**。
 答案就是 **6**！
 
+---
+
 ### DFS 排列組合
 
 - 組合 (Combination) / 子集 (Subset)：與「順序無關」 ({1, 2} 和 {2, 1} 視為同一種)。我們需要使用 startIndex 來控制，確保每次往下層搜尋時，只能挑選「當前數字之後」的數字，避免產生倒退選取造成的重複。
@@ -403,6 +405,70 @@ void dfs(int* nums, int numsSize, int startIndex, int* path, int pathLen) {
         path[pathLen] = nums[i];
         dfs(nums, numsSize, i + 1, path, pathLen + 1);
     }
+}
+```
+
+
+```c
+/**
+ * Return an array of arrays of size *returnSize.
+ * The sizes of the arrays are returned as *returnColumnSizes array.
+ * Note: Both returned array and *columnSizes array must be malloced, assume caller calls free().
+ */
+
+typedef struct {
+  int **ans;
+  int * col;
+  int total;
+  int capacity;
+} Result;
+
+void add_result(Result* ctx, int * temp, int len) {
+  if (ctx->total == ctx->capacity) {
+    ctx->capacity *=2;
+    ctx->ans = (int**)realloc(ctx->ans, ctx->capacity * sizeof(int*));
+    ctx->col = (int*)realloc(ctx->col, ctx->capacity * sizeof(int));
+  }
+
+  if (len > 0) {
+    ctx->ans[ctx->total] = (int*)malloc(sizeof(int) * len);
+    memcpy(ctx->ans[ctx->total], temp, sizeof(int)*len);
+  } else {
+    /* Need to include empty set */
+    ctx->ans[ctx->total] = NULL;
+  }
+  
+  ctx->col[ctx->total] = len;
+  ctx->total++;
+}
+
+void dfs(int*nums, int size, int start, int *temp, int idx, Result * ctx) {
+  add_result(ctx, temp, idx);
+
+  for (int i = start; i < size; i++) {
+    temp[idx] = nums[i];
+    dfs(nums, size, i + 1, temp, idx + 1, ctx);
+  }
+}
+
+int** subsets(int* nums, int numsSize, int* returnSize, int** returnColumnSizes) {
+  Result ctx;
+  ctx.capacity = 32;
+  ctx.total = 0;
+  ctx.ans = malloc(ctx.capacity * sizeof(int*));
+  ctx.col = malloc(ctx.capacity * sizeof(int));
+
+  int * temp = malloc(sizeof(int) * numsSize);
+  
+  dfs(nums, numsSize, 0, temp, 0, &ctx);
+
+  *returnSize = ctx.total;
+  *returnColumnSizes = ctx.col;
+
+  free(temp);
+  return ctx.ans;
+  
+
 }
 ```
 
